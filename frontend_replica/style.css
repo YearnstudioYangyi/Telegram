@@ -81,7 +81,6 @@ body {
     padding: 16px;
     display: flex;
     flex-direction: column;
-    scroll-behavior: smooth;
 }
 
 #message-list {
@@ -162,8 +161,8 @@ body {
     flex: 1;
     border: none;
     background: transparent;
-    padding: 8px;
-    font-size: 16px;
+    padding: 8px 12px;
+    font-size: 15px;
     outline: none;
     max-height: 100px;
 }
