@@ -23,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const textWidth = getTextWidth(text, inputFont);
 
         const inputRect = messageInput.getBoundingClientRect();
-        const sendBtnRect = sendBtn.getBoundingClientRect();
 
         // 2. Clear input
         messageInput.value = '';
@@ -60,17 +59,11 @@ document.addEventListener('DOMContentLoaded', () => {
             flyingBubble.className = 'bubble sent'; // to inherit style
             flyingBubble.style.backgroundColor = '#e3f2fd';
             flyingBubble.style.color = '#000000';
-            flyingBubble.style.padding = '8px 12px';
             flyingBubble.style.borderRadius = '12px';
             flyingBubble.style.borderBottomRightRadius = '4px';
-            flyingBubble.style.fontSize = '15px';
-            flyingBubble.style.lineHeight = '1.4';
             flyingBubble.style.position = 'absolute';
-            // Start sizing at target size, we will scale it to fit initial state
-            flyingBubble.style.width = targetRect.width + 'px';
-            flyingBubble.style.height = targetRect.height + 'px';
-            // Use transform-origin top left for easier morph scaling
-            flyingBubble.style.transformOrigin = 'top left';
+            flyingBubble.style.maxWidth = 'none'; // Overide max-width
+
             flyingContainer.appendChild(flyingBubble);
 
             // Create flying text
@@ -78,14 +71,14 @@ document.addEventListener('DOMContentLoaded', () => {
             flyingText.textContent = text;
             flyingText.style.position = 'absolute';
             flyingText.style.fontSize = '15px';
-            // Use word-wrap and target width to allow multi-line text to render correctly during flight
-            flyingText.style.width = (targetRect.width - 24) + 'px'; // width minus padding
+            flyingText.style.fontFamily = inputStyle.fontFamily;
             flyingText.style.wordWrap = 'break-word';
+            flyingText.style.whiteSpace = 'pre-wrap';
             flyingContainer.appendChild(flyingText);
 
             // Calculate start positions
             const maxInputWidth = inputRect.width;
-            const isShortMessage = textWidth < maxInputWidth - 20;
+            const isShortMessage = textWidth < maxInputWidth - 30; // giving a little more padding leeway
 
             const paddingLeft = parseFloat(inputStyle.paddingLeft);
             const textStartX = inputRect.left + paddingLeft;
@@ -94,25 +87,30 @@ document.addEventListener('DOMContentLoaded', () => {
             // X position near the send button for short message
             const rightEdgeX = inputRect.right - textWidth;
 
-            // Text initial position
+            // Initialize text for sliding
             flyingText.style.transform = `translate(${textStartX}px, ${textStartY}px)`;
 
-            // Text initial position for sliding (only text is visible initially)
-            flyingText.style.transform = `translate(${textStartX}px, ${textStartY}px)`;
+            // Text width needs to be bounded by target rect so it wraps identically
+            flyingText.style.width = (targetRect.width - 24) + 'px'; // 24 is roughly padding left + right
 
-            // Bubble is fully hidden while text is still inside the input
+            // Bubble is fully hidden initially
             flyingBubble.style.opacity = '0';
 
-            // Calculate starting scale based on the input box height vs target bubble height
-            const startScaleY = (inputRect.height - 8) / targetRect.height;
-            const startScaleX = isShortMessage ?
-                (textWidth + 24) / targetRect.width :
-                (inputRect.width - 24) / targetRect.width;
+            // Calculate dimensions
+            // To prevent border-radius distortion, we don't use scale().
+            // We animate the width/height CSS properties directly.
+
+            const startWidth = isShortMessage ? textWidth + 24 : inputRect.width;
+            const startHeight = inputRect.height;
+
+            const targetWidth = targetRect.width;
+            const targetHeight = targetRect.height;
 
             let slideAnimation;
 
             if (isShortMessage) {
                 // Short message: Slide right to edge, then show bubble and fly up
+                flyingText.style.width = textWidth + 'px'; // during slide, it's a single line
 
                 slideAnimation = flyingText.animate([
                     { transform: `translate(${textStartX}px, ${textStartY}px)` },
@@ -123,23 +121,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 slideAnimation.onfinish = () => {
-                    // Make bubble fully visible instantly when it leaves the input area
-                    flyingBubble.style.opacity = '1';
-
-                    const startBubbleX = rightEdgeX - 12;
+                    // Start flying to target
+                    const startBubbleX = rightEdgeX - 12; // approximate padding
                     const startBubbleY = inputRect.top;
 
-                    // Fly up and scale bubble to final size (no opacity changes)
+                    flyingBubble.style.opacity = '1';
+
+                    // Direct width/height/transform animation for Bubble
                     const flyBubbleAnim = flyingBubble.animate([
-                        { transform: `translate(${startBubbleX}px, ${startBubbleY}px) scale(${startScaleX}, ${startScaleY})` },
-                        { transform: `translate(${targetRect.left}px, ${targetRect.top}px) scale(1, 1)` }
+                        {
+                            transform: `translate(${startBubbleX}px, ${startBubbleY}px)`,
+                            width: `${startWidth}px`,
+                            height: `${startHeight}px`
+                        },
+                        {
+                            transform: `translate(${targetRect.left}px, ${targetRect.top}px)`,
+                            width: `${targetWidth}px`,
+                            height: `${targetHeight}px`
+                        }
                     ], {
                         duration: 250,
-                        easing: 'cubic-bezier(0.25, 1, 0.5, 1)' // smooth decelerating curve
+                        easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
                     });
 
                     const textTargetX = targetRect.left + 12;
-                    const textTargetY = targetRect.top + 8;
+                    const textTargetY = targetRect.top + 8; // approx padding top inside bubble
+
+                    // Update text to wrap correctly inside the bubble
+                    flyingText.style.width = (targetWidth - 24) + 'px';
 
                     const flyTextAnim = flyingText.animate([
                         { transform: `translate(${rightEdgeX}px, ${textStartY}px)` },
@@ -155,20 +164,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                 };
             } else {
-                // Long message: No sliding, immediately show bubble and fly up fully opaque
+                // Long message: No sliding, immediately show bubble and fly up
                 flyingBubble.style.opacity = '1';
 
-                const startBubbleX = inputRect.left + 8;
+                const startBubbleX = inputRect.left + 4; // match input box position roughly
                 const startBubbleY = inputRect.top;
 
-                const textStartXLong = startBubbleX + 12;
+                const textStartXLong = startBubbleX + paddingLeft;
 
-                // Align text initially for long messages
+                // Set text start position to match bubble
                 flyingText.style.transform = `translate(${textStartXLong}px, ${textStartY}px)`;
 
                 const flyBubbleAnim = flyingBubble.animate([
-                    { transform: `translate(${startBubbleX}px, ${startBubbleY}px) scale(${startScaleX}, ${startScaleY})` },
-                    { transform: `translate(${targetRect.left}px, ${targetRect.top}px) scale(1, 1)` }
+                    {
+                        transform: `translate(${startBubbleX}px, ${startBubbleY}px)`,
+                        width: `${startWidth}px`,
+                        height: `${startHeight}px`
+                    },
+                    {
+                        transform: `translate(${targetRect.left}px, ${targetRect.top}px)`,
+                        width: `${targetWidth}px`,
+                        height: `${targetHeight}px`
+                    }
                 ], {
                     duration: 300,
                     easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
