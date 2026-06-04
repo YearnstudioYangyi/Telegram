@@ -66,8 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
             flyingBubble.style.fontSize = '15px';
             flyingBubble.style.lineHeight = '1.4';
             flyingBubble.style.position = 'absolute';
+            // Start sizing at target size, we will scale it to fit initial state
             flyingBubble.style.width = targetRect.width + 'px';
             flyingBubble.style.height = targetRect.height + 'px';
+            // Use transform-origin top left for easier morph scaling
+            flyingBubble.style.transformOrigin = 'top left';
             flyingContainer.appendChild(flyingBubble);
 
             // Create flying text
@@ -75,7 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
             flyingText.textContent = text;
             flyingText.style.position = 'absolute';
             flyingText.style.fontSize = '15px';
-            flyingText.style.whiteSpace = 'nowrap';
+            // Use word-wrap and target width to allow multi-line text to render correctly during flight
+            flyingText.style.width = (targetRect.width - 24) + 'px'; // width minus padding
+            flyingText.style.wordWrap = 'break-word';
             flyingContainer.appendChild(flyingText);
 
             // Calculate start positions
@@ -92,16 +97,22 @@ document.addEventListener('DOMContentLoaded', () => {
             // Text initial position
             flyingText.style.transform = `translate(${textStartX}px, ${textStartY}px)`;
 
-            // Bubble initial state (transparent and positioned with the text)
+            // Text initial position for sliding (only text is visible initially)
+            flyingText.style.transform = `translate(${textStartX}px, ${textStartY}px)`;
+
+            // Bubble is fully hidden while text is still inside the input
             flyingBubble.style.opacity = '0';
-            flyingBubble.style.transform = `translate(${textStartX - paddingLeft}px, ${inputRect.top}px)`;
+
+            // Calculate starting scale based on the input box height vs target bubble height
+            const startScaleY = (inputRect.height - 8) / targetRect.height;
+            const startScaleX = isShortMessage ?
+                (textWidth + 24) / targetRect.width :
+                (inputRect.width - 24) / targetRect.width;
 
             let slideAnimation;
-            let flyAnimation;
 
             if (isShortMessage) {
                 // Short message: Slide right to edge, then show bubble and fly up
-                const slideDist = rightEdgeX - textStartX;
 
                 slideAnimation = flyingText.animate([
                     { transform: `translate(${textStartX}px, ${textStartY}px)` },
@@ -112,30 +123,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 slideAnimation.onfinish = () => {
-                    // Start flying to target
-                    const startBubbleX = rightEdgeX - 12; // approximate padding
-                    const startBubbleY = inputRect.top - 4;
-
+                    // Make bubble fully visible instantly when it leaves the input area
                     flyingBubble.style.opacity = '1';
 
+                    const startBubbleX = rightEdgeX - 12;
+                    const startBubbleY = inputRect.top;
+
+                    // Fly up and scale bubble to final size (no opacity changes)
                     const flyBubbleAnim = flyingBubble.animate([
-                        { transform: `translate(${startBubbleX}px, ${startBubbleY}px)`, opacity: 0 },
-                        { transform: `translate(${startBubbleX}px, ${startBubbleY}px)`, opacity: 1, offset: 0.1 },
-                        { transform: `translate(${targetRect.left}px, ${targetRect.top}px)`, opacity: 1 }
+                        { transform: `translate(${startBubbleX}px, ${startBubbleY}px) scale(${startScaleX}, ${startScaleY})` },
+                        { transform: `translate(${targetRect.left}px, ${targetRect.top}px) scale(1, 1)` }
                     ], {
-                        duration: 200,
-                        easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+                        duration: 250,
+                        easing: 'cubic-bezier(0.25, 1, 0.5, 1)' // smooth decelerating curve
                     });
 
-                    const textTargetX = targetRect.left + 12; // text inside bubble
+                    const textTargetX = targetRect.left + 12;
                     const textTargetY = targetRect.top + 8;
 
                     const flyTextAnim = flyingText.animate([
                         { transform: `translate(${rightEdgeX}px, ${textStartY}px)` },
                         { transform: `translate(${textTargetX}px, ${textTargetY}px)` }
                     ], {
-                        duration: 200,
-                        easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+                        duration: 250,
+                        easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
                     });
 
                     flyTextAnim.onfinish = () => {
@@ -144,20 +155,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                 };
             } else {
-                // Long message: No sliding, immediately show bubble and fly up
+                // Long message: No sliding, immediately show bubble and fly up fully opaque
                 flyingBubble.style.opacity = '1';
 
-                const startBubbleX = inputRect.right - targetRect.width - 12;
-                const startBubbleY = inputRect.top - 4;
+                const startBubbleX = inputRect.left + 8;
+                const startBubbleY = inputRect.top;
 
                 const textStartXLong = startBubbleX + 12;
 
+                // Align text initially for long messages
+                flyingText.style.transform = `translate(${textStartXLong}px, ${textStartY}px)`;
+
                 const flyBubbleAnim = flyingBubble.animate([
-                    { transform: `translate(${startBubbleX}px, ${startBubbleY}px) scale(0.9)`, opacity: 0.5 },
-                    { transform: `translate(${targetRect.left}px, ${targetRect.top}px) scale(1)`, opacity: 1 }
+                    { transform: `translate(${startBubbleX}px, ${startBubbleY}px) scale(${startScaleX}, ${startScaleY})` },
+                    { transform: `translate(${targetRect.left}px, ${targetRect.top}px) scale(1, 1)` }
                 ], {
-                    duration: 250,
-                    easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+                    duration: 300,
+                    easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
                 });
 
                 const textTargetX = targetRect.left + 12;
@@ -167,8 +181,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     { transform: `translate(${textStartXLong}px, ${textStartY}px)` },
                     { transform: `translate(${textTargetX}px, ${textTargetY}px)` }
                 ], {
-                    duration: 250,
-                    easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+                    duration: 300,
+                    easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
                 });
 
                 flyTextAnim.onfinish = () => {
