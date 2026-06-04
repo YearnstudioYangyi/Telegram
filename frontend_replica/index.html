@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Telegram Send Message Animation Replica</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header id="header">
+            <div class="header-content">
+                <div class="back-btn">&#8592;</div>
+                <div class="user-info">
+                    <div class="avatar"></div>
+                    <div class="details">
+                        <div class="name">John Doe</div>
+                        <div class="status">online</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main id="chat-container">
+            <div id="message-list">
+                <div class="message received">
+                    <div class="bubble">Hello! How are you?</div>
+                </div>
+                <div class="message sent">
+                    <div class="bubble">I'm doing well, thanks!</div>
+                </div>
+            </div>
+        </main>
+
+        <footer id="input-area">
+            <div class="input-wrapper">
+                <button class="attachment-btn">+</button>
+                <input type="text" id="message-input" placeholder="Message" autocomplete="off" />
+                <button id="send-btn" class="send-btn">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
+            </div>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
